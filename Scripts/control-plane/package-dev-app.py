@@ -48,12 +48,15 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--profile", required=True)
     parser.add_argument("--signing-identity", required=True)
+    parser.add_argument("--personal", action="store_true", help="Ad-hoc sign a personal test launcher")
     args = parser.parse_args()
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,47}", args.profile):
         parser.error("Use a unique lowercase profile of at most 48 characters")
     if not args.output.is_absolute() or args.output.exists() or args.output.suffix != ".app":
         parser.error("Output must be a new absolute .app path")
-    if args.signing_identity.strip() in ("", "-"):
+    if args.personal and args.signing_identity != "-":
+        parser.error("Personal signing requires --signing-identity=-")
+    if not args.personal and args.signing_identity.strip() in ("", "-"):
         parser.error("A Developer ID signing identity is required")
     info = plistlib.loads((args.app / "Contents/Info.plist").read_bytes())
     resources = args.app / "Contents/Resources"
@@ -87,8 +90,9 @@ def main():
         subprocess.run(["xcrun", "clang", "-arch", "arm64", "-fobjc-arc", "-Wall", "-Wextra", "-Werror",
                         "-mmacosx-version-min=" + info["LSMinimumSystemVersion"], "-framework", "Foundation",
                         str(source), "-o", str(contents / "MacOS/CrestDev")], check=True)
-    subprocess.run(["codesign", "--force", "--options", "runtime", "--timestamp", "--sign",
-                    args.signing_identity, str(args.output)], check=True)
+    signing = ["codesign", "--force", "--sign", args.signing_identity]
+    signing += ["--timestamp=none"] if args.personal else ["--options", "runtime", "--timestamp"]
+    subprocess.run(signing + [str(args.output)], check=True)
     subprocess.run(["codesign", "--verify", "--deep", "--strict", str(args.output)], check=True)
 
 

@@ -110,7 +110,8 @@ def sign_for_distribution(output, identity, app_entitlements):
     hardened runtime and a secure timestamp; the engine's JIT helpers keep the
     one exception they need."""
     def codesign(path, entitlements=None):
-        command = ["codesign", "--force", "--timestamp", "--options", "runtime", "--sign", identity]
+        command = ["codesign", "--force", "--sign", identity]
+        command += ["--timestamp=none"] if identity == "-" else ["--timestamp", "--options", "runtime"]
         with tempfile.TemporaryDirectory(prefix="crest-distribution-sign-") as temporary:
             if entitlements:
                 plist = Path(temporary) / "entitlements.plist"
@@ -168,10 +169,17 @@ def main():
     parser.add_argument("--distribution", action="store_true",
                         help="Sign for notarization: hardened runtime, secure timestamps and the engine's helper entitlements")
     parser.add_argument("--display-name", help="Visible name for an isolated review package")
+    parser.add_argument("--personal", action="store_true",
+                        help="Ad-hoc sign an isolated personal test package; no notarization or stable Keychain identity")
     args = parser.parse_args()
+    if args.personal and (args.product or args.baseline or args.distribution
+                          or args.provisioning_profile or args.entitlements):
+        parser.error("Personal signing is restricted to an unprovisioned isolated review package")
+    if args.personal and args.signing_identity != "-":
+        parser.error("Personal signing requires --signing-identity=-")
     if args.display_name and (args.product or args.baseline):
         parser.error("A custom display name belongs only to an isolated review package")
-    if args.signing_identity.strip() in ("", "-"):
+    if not args.personal and args.signing_identity.strip() in ("", "-"):
         parser.error("Use a stable signing identity so keychain access survives rebuilds")
     repo = Path(__file__).resolve().parents[2]
     output = args.output
@@ -369,12 +377,12 @@ def main():
     targets += sorted((p for p in frameworks.glob("*.framework") if p.name != ui.name), key=lambda p: len(p.parts), reverse=True)
     if cloud_entitlements:
         shutil.copy2(args.provisioning_profile, output / "Contents/embedded.provisionprofile")
-    if args.distribution:
+    if args.distribution or args.personal:
         sign_for_distribution(output, args.signing_identity, {
             **(ENGINE_APP_ENTITLEMENTS if args.product else {}),
             **(product_entitlements or {}), **(cloud_entitlements or {})})
         targets = []
-    for target in [*targets, *([] if args.distribution else [output])]:
+    for target in [*targets, *([] if args.distribution or args.personal else [output])]:
         if target == output and (cloud_entitlements or product_entitlements):
             existing = subprocess.run(["codesign", "-d", "--entitlements", ":-", str(output)],
                                       capture_output=True, check=True).stdout

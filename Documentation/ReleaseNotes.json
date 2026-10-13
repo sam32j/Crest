@@ -4093,6 +4093,10 @@
     "reuse-published-engine-for-api-dev-build": {
       "category": "internal",
       "message": "Reuse the published Chromium engine for API development builds while deferring Quick Window extension fixes"
+    },
+    "personal-dev-app-without-apple-credentials": {
+      "category": "internal",
+      "message": "Build isolated personal development apps without Apple signing credentials or notarization"
     }
   }
 }

@@ -4089,6 +4089,10 @@
     "isolated-downloadable-dev-app": {
       "category": "internal",
       "message": "Package notarized, version-labelled development apps with isolated browser profiles"
+    },
+    "reuse-published-engine-for-api-dev-build": {
+      "category": "internal",
+      "message": "Reuse the published Chromium engine for API development builds while deferring Quick Window extension fixes"
     }
   }
 }

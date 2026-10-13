@@ -35,13 +35,28 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
         run: echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
   engine:
+    name: Require the existing upstream engine
     needs: preflight
-    uses: ./.github/workflows/chromium-engine.yml
-    with:
-      source_sha: ${{ needs.preflight.outputs.sha }}
-    permissions:
-      contents: write
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify the API test build matches the published engine
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Defer only the two Quick Window extension fixes in this test build.
+          git restore --source=36b7a5830e7bd5d949ebf55724087a119eaeffa6 -- \
+            CrestEngines/Chromium/Overlay/chrome/browser/ui/crest/crest_chrome_host.mm \
+            CrestEngines/Chromium/Overlay/chrome/browser/ui/crest/crest_engine_page.cc
+          test "$(python3 Scripts/control-plane/chromium_engine.py tag)" = chromium-engine-b6b8ccd6e4969bd3
+          gh release view chromium-engine-b6b8ccd6e4969bd3 --repo pauljoda/Crest \
+            --json assets --jq '.assets[].name' > "$RUNNER_TEMP/crest-dev-engine-assets.txt"
+          grep -Fx 'Crest-Chromium-Engine-b6b8ccd6e4969bd3-arm64.zip' "$RUNNER_TEMP/crest-dev-engine-assets.txt"
+          grep -Fx 'Crest-Chromium-Engine-b6b8ccd6e4969bd3-arm64.zip.sha256' "$RUNNER_TEMP/crest-dev-engine-assets.txt"
   package:
     needs: [preflight, engine]
     runs-on: ${{ vars.CREST_DEV_MACOS_RUNNER || 'xcode-27' }}
@@ -51,6 +66,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.preflight.outputs.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - name: Prepare tools and source
         run: |

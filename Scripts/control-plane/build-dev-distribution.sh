@@ -32,11 +32,17 @@ identity_hash="$(security find-identity -v -p codesigning "$keychain_path" \
     | awk '/Developer ID Application:/ { print $2; exit }')"
 test -n "$identity_hash"
 
+# This API test build defers the two Quick Window extension fixes. Restoring
+# their exact baseline makes every compiled engine input match a published engine.
+git restore --source=36b7a5830e7bd5d949ebf55724087a119eaeffa6 -- \
+    CrestEngines/Chromium/Overlay/chrome/browser/ui/crest/crest_chrome_host.mm \
+    CrestEngines/Chromium/Overlay/chrome/browser/ui/crest/crest_engine_page.cc
 engine_root="$build_root/engine"
 mkdir -p "$engine_root"
 engine_tag="$(python3 Scripts/control-plane/chromium_engine.py tag)"
+test "$engine_tag" = chromium-engine-b6b8ccd6e4969bd3
 engine_asset="$(python3 Scripts/control-plane/chromium_engine.py asset)"
-gh release download "$engine_tag" --repo "$GITHUB_REPOSITORY" \
+gh release download "$engine_tag" --repo pauljoda/Crest \
     --pattern "$engine_asset" --pattern "${engine_asset}.sha256" --dir "$engine_root"
 (cd "$engine_root" && shasum -a 256 -c "${engine_asset}.sha256")
 ditto -x -k "$engine_root/$engine_asset" "$engine_root"
@@ -83,6 +89,7 @@ cat > "$build_root/publish/README.txt" <<EOF
 Requires Apple silicon and macOS $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist") or newer.
 Open the DMG and drag $app_name.app into Applications. Open that app to test.
 This build has its own identity and profile. It does not update stable Crest or use its browsing data.
+This API test build reuses the upstream engine and excludes the two Quick Window extension fixes.
 In the dev app, enable Settings > Agents and allow a Space, then copy the agent setup from that app.
 Source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$(git rev-parse HEAD)
 EOF

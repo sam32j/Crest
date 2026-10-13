@@ -167,7 +167,10 @@ def main():
     parser.add_argument("--output", required=True, type=Path, help="New absolute .app path outside /Applications")
     parser.add_argument("--distribution", action="store_true",
                         help="Sign for notarization: hardened runtime, secure timestamps and the engine's helper entitlements")
+    parser.add_argument("--display-name", help="Visible name for an isolated review package")
     args = parser.parse_args()
+    if args.display_name and (args.product or args.baseline):
+        parser.error("A custom display name belongs only to an isolated review package")
     if args.signing_identity.strip() in ("", "-"):
         parser.error("Use a stable signing identity so keychain access survives rebuilds")
     repo = Path(__file__).resolve().parents[2]
@@ -315,7 +318,7 @@ def main():
     info["CFBundleDisplayName"] = (
         "Crest" if args.product
         else "Crest Chromium Baseline" if args.baseline
-        else "Crest Chromium Experiment")
+        else args.display_name or "Crest Chromium Experiment")
     info["CFBundleName"] = info["CFBundleDisplayName"]
     if not args.baseline:
         with (ui / "Resources/Info.plist").open("rb") as stream:

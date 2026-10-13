@@ -4085,6 +4085,10 @@
     "native-automation-upstream-08-compatibility": {
       "category": "internal",
       "message": "Keep the additional browser controls compatible with the Crest 0.8 agent and window changes."
+    },
+    "isolated-downloadable-dev-app": {
+      "category": "internal",
+      "message": "Package notarized, version-labelled development apps with isolated browser profiles"
     }
   }
 }

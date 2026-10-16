@@ -40,8 +40,8 @@ jobs:
           test "$(python3 Scripts/control-plane/chromium_engine.py tag)" = chromium-engine-b6b8ccd6e4969bd3
           gh release view chromium-engine-b6b8ccd6e4969bd3 --repo pauljoda/Crest \
             --json assets --jq '.assets[].name' > "$RUNNER_TEMP/engine-assets.txt"
-          rg -Fx 'Crest-Chromium-Engine-b6b8ccd6e4969bd3-arm64.zip' "$RUNNER_TEMP/engine-assets.txt"
-          rg -Fx 'Crest-Chromium-Engine-b6b8ccd6e4969bd3-arm64.zip.sha256' "$RUNNER_TEMP/engine-assets.txt"
+          grep -Fx 'Crest-Chromium-Engine-b6b8ccd6e4969bd3-arm64.zip' "$RUNNER_TEMP/engine-assets.txt"
+          grep -Fx 'Crest-Chromium-Engine-b6b8ccd6e4969bd3-arm64.zip.sha256' "$RUNNER_TEMP/engine-assets.txt"
 
       - uses: ./.github/actions/prepare-apple-build
 

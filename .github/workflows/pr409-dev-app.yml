@@ -1,5 +1,5 @@
-name: Downloadable combined Crest Dev for PR 409
-run-name: Crest Dev with reduced PR 409 and existing engine
+name: Crest Dev
+run-name: Crest Dev
 
 on:
   workflow_dispatch:

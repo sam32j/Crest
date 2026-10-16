@@ -4161,6 +4161,10 @@
     "mcp-unclaim-preserves-existing-intent-tags": {
       "category": "internal",
       "message": "Name the connection-specific claim release UnclaimAgentTab so existing generated intent tags stay unchanged."
+    },
+    "combined-dev-build-reduced-mcp-background-launch": {
+      "category": "internal",
+      "message": "Combine the reduced MCP browser tools with background launch and the current sidebar improvements in a separate development build."
     }
   }
 }

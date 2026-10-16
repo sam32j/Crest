@@ -4,37 +4,37 @@ run-name: Crest Dev
 on:
   workflow_dispatch:
   push:
-    branches: ['dev-build/pr409-reduced-combined']
+    branches: ['dev-build/personal']
 
 permissions:
   contents: read
 
 concurrency:
-  group: crest-pr409-personal-build
+  group: crest-personal-build
   cancel-in-progress: false
 
 jobs:
   package:
-    name: Build combined personal app using published engine
+    name: Build personal app using published engine
     runs-on: xcode-27
     timeout-minutes: 120
     env:
-      REDUCED_PR_SHA: f7d8cf24a4e8006a31da7796d97fe6f738b6a4a6
-      UV_CACHE_DIR: /tmp/crest-pr409-uv-cache
+      BASELINE_SOURCE_SHA: f7d8cf24a4e8006a31da7796d97fe6f738b6a4a6
+      UV_CACHE_DIR: /tmp/crest-dev-uv-cache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: dev-build/pr409-reduced-combined
+          ref: dev-build/personal
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify PR source and require the existing engine
+      - name: Verify source baseline and require the existing engine
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor "$REDUCED_PR_SHA" HEAD
-          git diff --exit-code "$REDUCED_PR_SHA" HEAD -- \
+          git merge-base --is-ancestor "$BASELINE_SOURCE_SHA" HEAD
+          git diff --exit-code "$BASELINE_SOURCE_SHA" HEAD -- \
             CrestAgents CrestCore CrestContracts \
             CrestMac/App/Agents CrestShared/Infrastructure/Core/Generated \
             'CrestMac/Infrastructure/BrowserDialogPresenter*.swift'
@@ -46,12 +46,12 @@ jobs:
 
       - uses: ./.github/actions/prepare-apple-build
 
-      - name: Validate the combined source and personal packaging
+      - name: Validate source and personal packaging
         run: |
           set -euo pipefail
           command -v uv >/dev/null || brew install uv
           Scripts/control-plane/generate-contracts.sh --check
-          Scripts/check-swift-format.sh --base "$REDUCED_PR_SHA"
+          Scripts/check-swift-format.sh --base "$BASELINE_SOURCE_SHA"
           uv run --no-project python Scripts/check-architecture.py
           uv run --no-project python -m unittest discover -s Scripts/Tests -p test_personal_dev_packaging.py
           git diff --check
@@ -59,13 +59,13 @@ jobs:
       - name: Test MCP mutations, listings, native close, background focus and sidebar commands
         env:
           CREST_ISOLATED_SESSION: '1'
-          CREST_ISOLATED_PERSISTENCE_ID: pr409-${{ github.run_id }}
+          CREST_ISOLATED_PERSISTENCE_ID: crest-dev-${{ github.run_id }}
         run: |
           set -euo pipefail
           if ! xcodebuild test -project Crest.xcodeproj -scheme Crest -configuration Debug \
             -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO \
-            -derivedDataPath "$RUNNER_TEMP/pr409-tests-derived" \
-            -resultBundlePath "$RUNNER_TEMP/pr409-tests.xcresult" \
+            -derivedDataPath "$RUNNER_TEMP/crest-dev-tests-derived" \
+            -resultBundlePath "$RUNNER_TEMP/crest-dev-tests.xcresult" \
             -only-testing:CrestTests/BrowserAgentCatalogTests \
             -only-testing:CrestTests/BrowserAgentMutationTests \
             -only-testing:CrestTests/BrowserDurableTabCloseTests \
@@ -73,14 +73,14 @@ jobs:
             -only-testing:CrestTests/BrowserLaunchEnvironmentTests \
             -only-testing:CrestTests/BrowserSidebarCommandTests \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
-            CREST_MAC_BUNDLE_IDENTIFIER=com.pauldavis.crest.dev.pr409.tests \
+            CREST_MAC_BUNDLE_IDENTIFIER=com.pauldavis.crest.dev.personal.tests \
             CREST_MAC_ENTITLEMENTS=CrestNative/Apple/Composition/ControlPlane.entitlements \
             CREST_PROVISIONING_PROFILE_SPECIFIER= PROVISIONING_PROFILE_SPECIFIER= \
-            > "$RUNNER_TEMP/pr409-tests.log" 2>&1; then
-            tail -n 160 "$RUNNER_TEMP/pr409-tests.log"
+            > "$RUNNER_TEMP/crest-dev-tests.log" 2>&1; then
+            tail -n 160 "$RUNNER_TEMP/crest-dev-tests.log"
             exit 1
           fi
-          tail -n 70 "$RUNNER_TEMP/pr409-tests.log"
+          tail -n 70 "$RUNNER_TEMP/crest-dev-tests.log"
 
       - name: Build, package and smoke-test Crest Dev with the published engine
         env:
@@ -89,7 +89,7 @@ jobs:
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Crest-Dev-PR409-arm64-${{ github.run_id }}
+          name: Crest-Dev-arm64-${{ github.run_id }}
           path: ${{ runner.temp }}/crest-dev/publish/*
           if-no-files-found: error
           retention-days: 14
@@ -98,10 +98,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: PR409-native-tests-${{ github.run_id }}
+          name: Crest-Dev-native-tests-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/pr409-tests.log
-            ${{ runner.temp }}/pr409-tests.xcresult
+            ${{ runner.temp }}/crest-dev-tests.log
+            ${{ runner.temp }}/crest-dev-tests.xcresult
           if-no-files-found: ignore
           retention-days: 14
 
@@ -109,7 +109,7 @@ jobs:
         if: always()
         run: |
           registration=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-          for root in "$RUNNER_TEMP/crest-dev" "$RUNNER_TEMP/pr409-tests-derived"; do
+          for root in "$RUNNER_TEMP/crest-dev" "$RUNNER_TEMP/crest-dev-tests-derived"; do
             if [[ -d "$root" ]]; then
               find "$root" -type d -name '*.app' -prune -exec "$registration" -u {} \;
               rm -rf "$root"

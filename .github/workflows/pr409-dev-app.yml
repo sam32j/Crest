@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   package:
+    if: ${{ false }}
     name: Build combined personal app using published engine
     runs-on: xcode-27
     timeout-minutes: 120
